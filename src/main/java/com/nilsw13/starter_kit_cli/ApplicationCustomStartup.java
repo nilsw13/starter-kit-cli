@@ -7,10 +7,14 @@ import com.nilsw13.starter_kit_cli.records.ProjectSetUp;
 import com.nilsw13.starter_kit_cli.service.GithubService;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.jline.console.impl.Builtins;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.EventListener;
+import org.springframework.shell.Command;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -20,26 +24,49 @@ import java.io.IOException;
 public class ApplicationCustomStartup {
 
     ProjectSetUp projectConfig;
+    private ApplicationContext applicationContext;
 
+    // Constantes de couleurs ANSI
+    public static final String RESET = "\033[0m";
+    public static final String BOLD = "\033[1m";
+    public static final String CYAN = "\033[36m";
+    public static final String BLACK = "\033[30m";
+    public static final String GREEN = "\033[32m";
+    public static final String YELLOW = "\033[33m";
+    public static final String BLUE = "\033[34m";
+    public static final String PURPLE = "\033[35m";
+    public static final String RED = "\033[31m";
+    public static final String BG_BLUE = "\033[44m";
+    public static final String BG_PURPLE = "\033[45m";  // Fond violet standard
+    public static final String BG_BRIGHT_PURPLE = "\033[105m";  // Fond violet clair
+    public static final String BG_GREEN = "\033[42m";        // Fond vert standard
+    public static final String BG_BRIGHT_GREEN = "\033[102m"; // Fond vert clair
+    public static final String BG_DARK_GREEN = "\033[48;5;22m"; // Fond vert foncé (Palette étendue)
+    public static final String MAGENTA = "\u001B[35m";
     final String DB_QUESTION = String.format(
-            "Choose your Database : \n" +
-            "[1] - PostgreSQL \n" +
-            "[2] - MySql \n" +
-            "[3] - MariaDB\n" + "\n"
+            GREEN + BOLD + "Choose your Database :" + RESET + "\n" +
+                    CYAN + "[1] - PostgreSQL" + RESET + "\n" +
+                    CYAN + "[2] - MySQL" + RESET + "\n" +
+                    CYAN + "[3] - MariaDB" + RESET + "\n\n" +
+                    GREEN + "Your choice (1-3): " + RESET
     );
 
     final String MAIL_QUESTION = String.format(
-            "Choose your Mail service : \n" +
-                    "[1] - Mailgun \n" +
-                    "[2] - Resend \n" +
-                    "[3] - Sendgrid\n" + "\n"
+          GREEN + BOLD + "Choose your Mail service : " + RESET + "\n" +
+                  CYAN + "[1] - Mailgun " + RESET + "\n" +
+                  CYAN + "[2] - Resend " + RESET + "\n" +
+                  CYAN + "[3] - Sendgrid" + RESET + "\n" + "\n"
+                  +
+                  GREEN + "Your choice (1-3): " + RESET
     );
 
     final String FRONT_QUESTION = String.format(
-            "Choose your Frontend framework : \n" +
-                    "[1] - ReactJs \n" +
-                    "[2] - Angular \n" +
-                    "[3] - VueJs\n" + "\n"
+         PURPLE + BOLD + "Choose your Frontend framework : " + RESET + "\n" +
+                 CYAN + "[1] - ReactJs " + RESET + "\n" +
+                 CYAN + "[2] - VueJs " + RESET + "\n" +
+                 CYAN + "[3] - Angular" + RESET + "\n" + "\n"
+                 +
+                 GREEN + "Your choice (1-3): " + RESET
     );
 
     final int[] VALID_ANSWER = {1, 2, 3};
@@ -59,13 +86,34 @@ public class ApplicationCustomStartup {
 
     @EventListener(ApplicationStartedEvent.class)
     public void onStartUp() throws InterruptedException, GitAPIException, IOException {
-        terminal.writer().println("==============================");
-        terminal.writer().println("     Spring Boot Starter      ");
-        terminal.writer().println("==============================");
+
+// Create a bordered box with properly aligned text
+        int boxWidth = 40;
+        String title = "Spring Boot SaaS Starter";
+        String author = "by @nilsw13";
+
+// Calculate centering padding for each line
+        int titlePadding = (boxWidth - title.length()) / 2;
+        int authorPadding = (boxWidth - author.length()) / 2;
+
+        terminal.writer().println("\n" + GREEN + "┌" + "─".repeat(boxWidth) + "┐" + RESET);
+        terminal.writer().println(GREEN + "│" + " ".repeat(titlePadding) + title + " ".repeat(boxWidth - titlePadding - title.length()) + "│" + RESET);
+        terminal.writer().println(GREEN + "│" + " ".repeat(boxWidth) + "│" + RESET);
+        terminal.writer().println(GREEN + "│" + " ".repeat(authorPadding) + author + " ".repeat(boxWidth - authorPadding - author.length()) + "│" + RESET);
+        terminal.writer().println(GREEN + "└" + "─".repeat(boxWidth) + "┘" + RESET);
+        terminal.writer().println();
         boolean isFolderCreated = false;
 
-        String packageName = lineReader.readLine("Package name ( No spaces ) :");
-        String projectName = lineReader.readLine("Project name ( No spaces ) : ");
+        String packageName = lineReader.readLine(
+                PURPLE + BOLD + "Package name" + RESET + " (no spaces): " + CYAN
+        );
+        terminal.writer().print(RESET);
+
+
+        String projectName = lineReader.readLine(
+                PURPLE + BOLD + "Project name" + RESET + " (no spaces): " + CYAN
+        );
+        terminal.writer().print(RESET);
 
         System.out.println(packageName + "."+ projectName);
 
@@ -81,10 +129,8 @@ public class ApplicationCustomStartup {
             isFolderCreated = true;
             System.out.println(git.toString());
 
-
-
-
-            throw new RuntimeException("Test d'interruption délibérée");
+            getProjectSetupLoading();
+            SpringApplication.exit(applicationContext, () -> 0);
 
 
         } catch (Exception e) {
@@ -111,13 +157,13 @@ public class ApplicationCustomStartup {
 
     public void getSummary() {
         System.out.printf("Project summary : \n" +
-                "========================================================================================\n\n" +
-                "- PROJECT PACKAGE : " + projectConfig.packageName() + "\n" +
-                "- PROJECT NAME : " + projectConfig.projectName() + "\n" +
-                "- PROJECT DATABASE : " + projectConfig.databaseName() + "\n" +
-                "- PROJECT MAIL SERVICE : " + projectConfig.mailServiceName() + "\n" +
-                "- PROJECT FRONT-END FRAMEWORK : " + projectConfig.frontEndFrameworkName() + "\n\n" +
-                "========================================================================================\n\n"
+              BG_DARK_GREEN +BOLD+  "========================================================================================" + RESET + "\n" +
+              BG_DARK_GREEN +BOLD+  "- PROJECT PACKAGE : " + projectConfig.packageName() + "                                 " + RESET + "\n" +
+              BG_DARK_GREEN +BOLD+  "- PROJECT NAME : " + projectConfig.projectName()    + "                                 " + RESET + "\n" +
+              BG_DARK_GREEN +BOLD+  "- PROJECT DATABASE : " + projectConfig.databaseName() + RESET + "\n" +
+              BG_DARK_GREEN +BOLD+  "- PROJECT MAIL SERVICE : " + projectConfig.mailServiceName() + RESET + "\n" +
+              BG_DARK_GREEN +BOLD+  "- PROJECT FRONT-END FRAMEWORK : " + projectConfig.frontEndFrameworkName() + RESET + "\n" +
+              BG_DARK_GREEN +BOLD+   "========================================================================================" + RESET + "\n\n"
         );
 
     }
@@ -143,13 +189,14 @@ public class ApplicationCustomStartup {
       while (!validInput) {
           try {
             choice = Integer.parseInt(lineReader.readLine(DB_QUESTION));
-              for (int validChoice : VALID_ANSWER) {
-                  if (choice == validChoice){
+              for (int i = 0; i< VALID_ANSWER.length; i++) {
+                  if (VALID_ANSWER[i] == choice) {
                       validInput = true;
                       break;
-                  } else {
-                      throw new NumberFormatException();
                   }
+              }
+              if (!validInput) {
+                  System.out.println("Error ! please enter valid format answer");
               }
 
           } catch (NumberFormatException e) {
@@ -188,13 +235,14 @@ public class ApplicationCustomStartup {
         while (!validInput) {
             try {
                 choice = Integer.parseInt(lineReader.readLine(MAIL_QUESTION));
-                for (int validChoice : VALID_ANSWER) {
-                    if(choice == validChoice) {
+                for (int i = 0; i< VALID_ANSWER.length; i++) {
+                    if (VALID_ANSWER[i] == choice) {
                         validInput = true;
                         break;
-                    } else {
-                        throw  new NumberFormatException();
                     }
+                }
+                if (!validInput) {
+                    System.out.println("Error ! please enter valid format answer");
                 }
 
             } catch (NumberFormatException e) {
@@ -239,14 +287,17 @@ public class ApplicationCustomStartup {
         while (!validInput) {
             try {
                 choice = Integer.parseInt(lineReader.readLine(FRONT_QUESTION));
-                for (int validChoice : VALID_ANSWER) {
-                    if (choice == validChoice){
+
+                for (int i = 0; i< VALID_ANSWER.length; i++) {
+                    if (VALID_ANSWER[i] == choice) {
                         validInput = true;
                         break;
-                    } else {
-                        throw new NumberFormatException();
                     }
                 }
+                if (!validInput) {
+                    System.out.println("Error ! please enter valid format answer");
+                }
+
 
             } catch (NumberFormatException e){
                 System.out.println("Error ! please enter valid format answer");
