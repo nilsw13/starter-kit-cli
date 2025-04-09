@@ -4,6 +4,9 @@ import com.nilsw13.starter_kit_cli.records.DatabaseConfig;
 import com.nilsw13.starter_kit_cli.records.FrontendFrameworkConfig;
 import com.nilsw13.starter_kit_cli.records.MailServiceConfig;
 import com.nilsw13.starter_kit_cli.records.ProjectSetUp;
+import com.nilsw13.starter_kit_cli.service.GithubService;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
@@ -40,14 +43,17 @@ public class ApplicationCustomStartup {
 
     private final LineReader lineReader;
     private final Terminal terminal;
+    private final GithubService githubService;
 
-    public ApplicationCustomStartup(LineReader lineReader, Terminal terminal) {
+
+    public ApplicationCustomStartup(GithubService githubService, LineReader lineReader, Terminal terminal) {
+        this.githubService = githubService;
         this.lineReader = lineReader;
         this.terminal = terminal;
     }
 
     @EventListener(ApplicationStartedEvent.class)
-    public void onStartUp() throws InterruptedException {
+    public void onStartUp() throws InterruptedException, GitAPIException {
         terminal.writer().println("==============================");
         terminal.writer().println("     Spring Boot Starter      ");
         terminal.writer().println("==============================");
@@ -62,6 +68,10 @@ public class ApplicationCustomStartup {
 
         projectConfig = new ProjectSetUp(packageName, projectName, db.desc(), mail.desc(), frontend.desc());
         getSummary();
+
+        Git git = githubService.cloneDefaultRepo(projectName);
+        System.out.println(git.toString());
+
         getProjectSetupLoading();
 
         terminal.writer().flush();
