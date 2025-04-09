@@ -13,6 +13,9 @@ import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
+import java.io.IOException;
+
 @Component
 public class ApplicationCustomStartup {
 
@@ -39,6 +42,8 @@ public class ApplicationCustomStartup {
                     "[3] - VueJs\n" + "\n"
     );
 
+    final int[] VALID_ANSWER = {1, 2, 3};
+
 
 
     private final LineReader lineReader;
@@ -53,7 +58,7 @@ public class ApplicationCustomStartup {
     }
 
     @EventListener(ApplicationStartedEvent.class)
-    public void onStartUp() throws InterruptedException, GitAPIException {
+    public void onStartUp() throws InterruptedException, GitAPIException, IOException {
         terminal.writer().println("==============================");
         terminal.writer().println("     Spring Boot Starter      ");
         terminal.writer().println("==============================");
@@ -62,19 +67,27 @@ public class ApplicationCustomStartup {
         String projectName = lineReader.readLine("Project name ( No spaces ) : ");
 
         System.out.println(packageName + "."+ projectName);
-        DatabaseConfig db =  dbConfig();
-        MailServiceConfig mail = mailServiceConfig();
-        FrontendFrameworkConfig frontend = frontendFrameworkConfig();
 
-        projectConfig = new ProjectSetUp(packageName, projectName, db.desc(), mail.desc(), frontend.desc());
-        getSummary();
+        try {
+            Git git = githubService.cloneDefaultRepo(projectName);
+            System.out.println(git.toString());
+            DatabaseConfig db =  dbConfig();
+            MailServiceConfig mail = mailServiceConfig();
+            FrontendFrameworkConfig frontend = frontendFrameworkConfig();
 
-        Git git = githubService.cloneDefaultRepo(projectName);
-        System.out.println(git.toString());
+            projectConfig = new ProjectSetUp(packageName, projectName, db.desc(), mail.desc(), frontend.desc());
+            getSummary();
 
-        getProjectSetupLoading();
 
-        terminal.writer().flush();
+
+            getProjectSetupLoading();
+
+            terminal.writer().flush();
+        } catch (InterruptedException e) {
+            System.out.println("Error while creating new project. Please try again or contact us.");
+            githubService.deleteDirectory(new File(projectName));
+        }
+
 
 
     }
@@ -108,12 +121,24 @@ public class ApplicationCustomStartup {
 
     public DatabaseConfig dbConfig() throws InterruptedException {
         int choice = 0;
-        try {
-            choice = Integer.parseInt(lineReader.readLine(DB_QUESTION));
+        boolean validInput = false;
 
-        } catch (NumberFormatException e) {
-            System.out.println("Error ! please enter valid format answer");
-        }
+      while (!validInput) {
+          try {
+            choice = Integer.parseInt(lineReader.readLine(DB_QUESTION));
+              for (int validChoice : VALID_ANSWER) {
+                  if (choice == validChoice){
+                      validInput = true;
+                      break;
+                  } else {
+                      throw new NumberFormatException();
+                  }
+              }
+
+          } catch (NumberFormatException e) {
+              System.out.println("Error ! please enter valid format answer");
+          }
+      }
 
         switch (choice) {
             case 1:
@@ -141,13 +166,26 @@ public class ApplicationCustomStartup {
 
     public MailServiceConfig mailServiceConfig() throws InterruptedException {
         int choice = 0 ;
+        boolean validInput = false;
 
-        try {
-            choice = Integer.parseInt(lineReader.readLine(MAIL_QUESTION));
+        while (!validInput) {
+            try {
+                choice = Integer.parseInt(lineReader.readLine(MAIL_QUESTION));
+                for (int validChoice : VALID_ANSWER) {
+                    if(choice == validChoice) {
+                        validInput = true;
+                        break;
+                    } else {
+                        throw  new NumberFormatException();
+                    }
+                }
 
-        } catch (NumberFormatException e) {
-            System.out.println("Error ! please enter valid format answer");
+            } catch (NumberFormatException e) {
+                System.out.println("Error ! please enter valid format answer");
+            }
         }
+
+
 
         switch (choice) {
             case 1:
@@ -180,10 +218,22 @@ public class ApplicationCustomStartup {
 
     public FrontendFrameworkConfig frontendFrameworkConfig() throws InterruptedException {
         int choice = 0;
-        try {
-            choice = Integer.parseInt(lineReader.readLine(FRONT_QUESTION));
-        } catch (NumberFormatException e){
-            System.out.println("Error ! please enter valid format answer");
+        boolean validInput = false;
+        while (!validInput) {
+            try {
+                choice = Integer.parseInt(lineReader.readLine(FRONT_QUESTION));
+                for (int validChoice : VALID_ANSWER) {
+                    if (choice == validChoice){
+                        validInput = true;
+                        break;
+                    } else {
+                        throw new NumberFormatException();
+                    }
+                }
+
+            } catch (NumberFormatException e){
+                System.out.println("Error ! please enter valid format answer");
+            }
         }
 
         switch (choice) {
