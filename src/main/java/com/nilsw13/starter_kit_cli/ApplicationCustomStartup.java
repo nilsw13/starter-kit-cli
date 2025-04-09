@@ -62,6 +62,7 @@ public class ApplicationCustomStartup {
         terminal.writer().println("==============================");
         terminal.writer().println("     Spring Boot Starter      ");
         terminal.writer().println("==============================");
+        boolean isFolderCreated = false;
 
         String packageName = lineReader.readLine("Package name ( No spaces ) :");
         String projectName = lineReader.readLine("Project name ( No spaces ) : ");
@@ -69,23 +70,39 @@ public class ApplicationCustomStartup {
         System.out.println(packageName + "."+ projectName);
 
         try {
-            Git git = githubService.cloneDefaultRepo(projectName);
-            System.out.println(git.toString());
+
             DatabaseConfig db =  dbConfig();
             MailServiceConfig mail = mailServiceConfig();
             FrontendFrameworkConfig frontend = frontendFrameworkConfig();
 
             projectConfig = new ProjectSetUp(packageName, projectName, db.desc(), mail.desc(), frontend.desc());
             getSummary();
+            Git git = githubService.cloneDefaultRepo(projectName);
+            isFolderCreated = true;
+            System.out.println(git.toString());
 
 
 
-            getProjectSetupLoading();
 
-            terminal.writer().flush();
-        } catch (InterruptedException e) {
+            throw new RuntimeException("Test d'interruption délibérée");
+
+
+        } catch (Exception e) {
             System.out.println("Error while creating new project. Please try again or contact us.");
-            githubService.deleteDirectory(new File(projectName));
+            if (isFolderCreated && packageName != null) {
+
+
+              try {
+                  File projectDir = new File(projectName);
+                  if (projectDir.exists()) {
+                      System.out.println("Rolling back ... Deleting project directory..");
+                      githubService.deleteDirectory(projectDir);
+                  }
+              } catch (Exception cleanError) {
+                  System.out.println("Failed to delete created directory");
+                  System.out.println("Please manually delete the directory " + new File(projectName).getAbsolutePath());
+              }
+            }
         }
 
 
