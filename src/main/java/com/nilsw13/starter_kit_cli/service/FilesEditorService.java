@@ -100,7 +100,7 @@ public class FilesEditorService {
                     => for the example we will try to change it for mysql without carrying about the user choice for now.
                     // mysql-connector-java
                 */
-                updateDependencyInXml(projectName, "mysql", "mysql-connector-java", document);
+                updateDatabaseDependencyInXml(projectName, "mysql", "mysql-connector-java", document);
 
 
 
@@ -150,7 +150,7 @@ public class FilesEditorService {
     // private methods
 
 
-    private void updateDependencyInXml(String projectName,  String newgroup, String newArtifactId, Document document) {
+    private void updateDatabaseDependencyInXml(String projectName,  String newgroup, String newArtifactId, Document document) {
                 String oldGroupId = "org.postgresql";
                 String oldArtifactId = "postgresql";
 
