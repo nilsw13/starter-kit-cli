@@ -24,101 +24,125 @@ import java.util.*;
 public class FilesEditorService {
 
     // public methods
-    public  void updateApplicationProperties(String projectName, Map<String , String> newProperties) throws IOException {
-        Path propsPath = Paths.get(projectName, "src", "main", "resources", "application.properties");
 
-        if (!Files.exists(propsPath)) {
-            System.out.println("application.properties file not found at : " + propsPath.toString());
-            return;
-        }
 
-        List<String> lines = Files.readAllLines(propsPath);
-        List<String> newLines = new ArrayList<>();
+            // update application.properties & pom.xml
+            public  void updateApplicationProperties(String projectName, Map<String , String> newProperties) throws IOException {
+                Path propsPath = Paths.get(projectName, "src", "main", "resources", "application.properties");
 
-        //Set<String> processedKeys = new HashSet<>();
-
-        for (String line: lines) {
-
-            String trimmedLine = line.trim();
-
-            if (trimmedLine.isEmpty() || trimmedLine.startsWith("#")){
-                newLines.add(line);
-                continue;
-            }
-
-            int equalsIndex = trimmedLine.indexOf("=");
-            if(equalsIndex > 0) {
-                String key = trimmedLine.substring(0, equalsIndex).trim();
-
-                if (newProperties.containsKey(key)) {
-                    newLines.add(line.substring(0, line.indexOf('=') + 1) + newProperties.get(key));
-                    //processedKeys.add(key);
-                } else {
-                    newLines.add(line);
+                if (!Files.exists(propsPath)) {
+                    System.out.println("application.properties file not found at : " + propsPath.toString());
+                    return;
                 }
-            } else {
-                newLines.add(line);
+
+                List<String> lines = Files.readAllLines(propsPath);
+                List<String> newLines = new ArrayList<>();
+
+                //Set<String> processedKeys = new HashSet<>();
+
+                for (String line: lines) {
+
+                    String trimmedLine = line.trim();
+
+                    if (trimmedLine.isEmpty() || trimmedLine.startsWith("#")){
+                        newLines.add(line);
+                        continue;
+                    }
+
+                    int equalsIndex = trimmedLine.indexOf("=");
+                    if(equalsIndex > 0) {
+                        String key = trimmedLine.substring(0, equalsIndex).trim();
+
+                        if (newProperties.containsKey(key)) {
+                            newLines.add(line.substring(0, line.indexOf('=') + 1) + newProperties.get(key));
+                            //processedKeys.add(key);
+                        } else {
+                            newLines.add(line);
+                        }
+                    } else {
+                        newLines.add(line);
+                    }
+
+
+                }
+
+                Files.write(propsPath, newLines);
+
+            }
+            public void updateProjectNameArtifactAndDescriptionInXml(String projectName) throws Exception {
+                Path pomPath = Paths.get(projectName, "pom.xml");
+
+                if (!Files.exists(pomPath)) {
+                    System.out.println("error ! pom.xml not found at: " + pomPath);
+                    return;
+                }
+
+                // load document
+                Document document = loadXmlDocument(pomPath);
+
+                // update artifactID for project
+                updateArtifactIdInPom(projectName, document);
+                NodeList nameNodes = document.getElementsByTagName("name");
+                NodeList descriptionNodes = document.getElementsByTagName("description");
+                // update name tag
+                if (nameNodes.getLength() > 0 ) {
+                    nameNodes.item(0).setTextContent(projectName);
+                    descriptionNodes.item(0).setTextContent(projectName + "SaaS project");
+
+                } else {
+                    System.out.println("Error name , artifactId or description tag not found");
+                    return;
+                }
+
+                /* now we proceed to update PostgresSQL dependency
+                   if user choose an other option.
+                    ==> Psql is default choice so it's already there. We need to update it or keep it
+                    => for the example we will try to change it for mysql without carrying about the user choice for now.
+                    // mysql-connector-java
+                */
+                updateDependencyInXml(projectName, "mysql", "mysql-connector-java", document);
+
+
+
+
+                saveXmlDocument(document, pomPath);
+                System.out.println("Project name updated to : " + projectName);
+                System.out.println("Artifact Id updated to :" + projectName);
+                System.out.println("Description updated to :" + projectName + "Saas project");
+
             }
 
 
+
+
+
+
+
+
+
+
+
+
+            public void updateProjectPackage(String projectName, String packageName) throws Exception {
+
+            String oldPackage = "nilsw13";
+            String oldProjectName = "springreact";
+
+            // change groupId declaration in Pom.xml
+            updateGroupIdInPom(projectName, packageName);
+
+            // change package declaration in java files
+            updateJavaPackageDeclarations(projectName, packageName, oldPackage);
+
+            // change structure directory name
+            updatePackageDirectoryStructure(projectName, oldPackage, packageName);
+
+
+            System.out.println("Package successfully updated from " + oldPackage + " to " + packageName);
+
         }
 
-        Files.write(propsPath, newLines);
 
-    }
-    public void updateProjectNameInXml(String projectName) throws Exception {
-        Path pomPath = Paths.get(projectName, "pom.xml");
-
-        if (!Files.exists(pomPath)) {
-            System.out.println("error ! pom.xml not found at: " + pomPath);
-            return;
-        }
-
-        // load document
-        Document document = loadXmlDocument(pomPath);
-        // find  tags in document
-        NodeList nameNodes = document.getElementsByTagName("name");
-        NodeList artifactNodes = document.getElementsByTagName("artifactId");
-        NodeList descriptionNodes = document.getElementsByTagName("description");
-
-        // update name tag
-        if (nameNodes.getLength() > 0 && artifactNodes.getLength() > 0) {
-            nameNodes.item(0).setTextContent(projectName);
-            artifactNodes.item(1).setTextContent(projectName);
-            descriptionNodes.item(0).setTextContent(projectName + "SaaS project");
-
-        } else {
-            System.out.println("Error name , artifactId or description tag not found");
-            return;
-        }
-
-        saveXmlDocument(document, pomPath);
-        System.out.println("Project name updated to : " + projectName);
-        System.out.println("Artifact Id updated to :" + projectName);
-        System.out.println("Description updated to :" + projectName + "Saas project");
-
-    }
-
-    public void updateProjectPackage(String projectName, String packageName) throws Exception {
-
-        String oldPackage = "nilsw13";
-        String oldProjectName = "springreact";
-
-        // change groupId declaration in Pom.xml
-        updateGroupIdInPom(projectName, packageName);
-
-        // change package declaration in java files
-        updateJavaPackageDeclarations(projectName, packageName, oldPackage);
-
-        // change structure directory name
-        updatePackageDirectoryStructure(projectName, oldPackage, packageName);
-
-        // change references in configFiles
-        updateConfigFiles(projectName, oldPackage, packageName);
-
-        System.out.println("Package successfully updated from " + oldPackage + " to " + packageName);
-
-    }
 
 
 
@@ -126,15 +150,46 @@ public class FilesEditorService {
     // private methods
 
 
-    private void updateConfigFiles(String projectName, String oldPackage, String packageName) {
-    }
+    private void updateDependencyInXml(String projectName,  String newgroup, String newArtifactId, Document document) {
+                String oldGroupId = "org.postgresql";
+                String oldArtifactId = "postgresql";
+
+
+                NodeList dependencyTag =  document.getElementsByTagName("dependency");
+                for (int i =0; i < dependencyTag.getLength(); i++) {
+                    Element childTag = (Element) dependencyTag.item(i);
+
+
+                    NodeList groupeTag = childTag.getElementsByTagName("groupId");
+                    NodeList artifactTag = childTag.getElementsByTagName("artifactId");
+
+                    if (groupeTag.getLength() > 0 && artifactTag.getLength() > 0) {
+                        String groupeIdValue =groupeTag.item(0).getTextContent();
+                        String artifactIdValue = artifactTag.item(0).getTextContent();
+
+                        if(groupeIdValue.startsWith("org.postgresql") && artifactIdValue.startsWith("postgresql")) {
+                            groupeTag.item(0).setTextContent(newgroup);
+                            artifactTag.item(0).setTextContent(newArtifactId);
+                        }
+
+
+                    }
+                }
+
+    };
+
     private void updatePackageDirectoryStructure(String projectName, String oldPackage, String packageName) {
     }
 
     private void updateJavaPackageDeclarations(String projectName, String packageName, String oldPackage) {
     }
 
-    private void updateArtifactIdInPom(String projectName) {
+    private void updateArtifactIdInPom(String projectName, Document document) {
+        NodeList artifactNodes = document.getElementsByTagName("artifactId");
+        if (artifactNodes.getLength() > 0) {
+            artifactNodes.item(1).setTextContent(projectName);
+        }
+
     }
     private void updateGroupIdInPom(String projectName, String packageName) {
     }
