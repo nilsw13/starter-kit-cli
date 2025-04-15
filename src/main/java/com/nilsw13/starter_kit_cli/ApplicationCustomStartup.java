@@ -4,6 +4,7 @@ import com.nilsw13.starter_kit_cli.records.DatabaseConfig;
 import com.nilsw13.starter_kit_cli.records.FrontendFrameworkConfig;
 import com.nilsw13.starter_kit_cli.records.MailServiceConfig;
 import com.nilsw13.starter_kit_cli.records.ProjectSetUp;
+import com.nilsw13.starter_kit_cli.service.FilesEditorService;
 import com.nilsw13.starter_kit_cli.service.GithubService;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -19,6 +20,10 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Component
 public class ApplicationCustomStartup {
@@ -70,32 +75,34 @@ public class ApplicationCustomStartup {
     );
 
     final int[] VALID_ANSWER = {1, 2, 3};
+    private boolean isPostgreSQL = false;
+    private boolean isMySql = false;
+    private boolean isMariaDb = false;
+    private String projectName = "";
 
 
 
     private final LineReader lineReader;
     private final Terminal terminal;
     private final GithubService githubService;
+    private final FilesEditorService filesEditorService;
 
 
-    public ApplicationCustomStartup(GithubService githubService, LineReader lineReader, Terminal terminal) {
+
+    public ApplicationCustomStartup(GithubService githubService, LineReader lineReader, Terminal terminal, FilesEditorService filesEditorService) {
         this.githubService = githubService;
         this.lineReader = lineReader;
         this.terminal = terminal;
+        this.filesEditorService = filesEditorService;
     }
 
     @EventListener(ApplicationStartedEvent.class)
     public void onStartUp() throws InterruptedException, GitAPIException, IOException {
-
-// Create a bordered box with properly aligned text
         int boxWidth = 40;
         String title = "Spring Boot SaaS Starter";
         String author = "by @nilsw13";
-
-// Calculate centering padding for each line
         int titlePadding = (boxWidth - title.length()) / 2;
         int authorPadding = (boxWidth - author.length()) / 2;
-
         terminal.writer().println("\n" + GREEN + "┌" + "─".repeat(boxWidth) + "┐" + RESET);
         terminal.writer().println(GREEN + "│" + " ".repeat(titlePadding) + title + " ".repeat(boxWidth - titlePadding - title.length()) + "│" + RESET);
         terminal.writer().println(GREEN + "│" + " ".repeat(boxWidth) + "│" + RESET);
@@ -104,36 +111,48 @@ public class ApplicationCustomStartup {
         terminal.writer().println();
         boolean isFolderCreated = false;
 
+
+        // on demande le nom de package et le nom du projet
         String packageName = lineReader.readLine(
                 PURPLE + BOLD + "Package name" + RESET + " (no spaces): " + CYAN
         );
         terminal.writer().print(RESET);
-
-
-        String projectName = lineReader.readLine(
+        projectName = lineReader.readLine(
                 PURPLE + BOLD + "Project name" + RESET + " (no spaces): " + CYAN
         );
         terminal.writer().print(RESET);
-
         System.out.println(packageName + "."+ projectName);
+        if (packageName == null | projectName == null) {
+            System.out.println("Error, required infos for cloning remote project not found.");
+            return;
+        }
 
         try {
+
+            Git git = githubService.cloneDefaultRepo(projectName);
+            isFolderCreated = true;
+
+            // First Stone : change name project in properties and XML => new project name set up in config files
+            Map<String , String> newNameProperties = new HashMap<>();
+            newNameProperties.put("spring.application.name", projectName);
+            filesEditorService.updateApplicationProperties(projectName, newNameProperties);
+            filesEditorService.updateProjectNameArtifactAndDescriptionInXml(projectName);
+
+
+        // maintenant on passe a la phase ou l'user doit faire des choix
+
 
             DatabaseConfig db =  dbConfig();
             MailServiceConfig mail = mailServiceConfig();
             FrontendFrameworkConfig frontend = frontendFrameworkConfig();
-
             projectConfig = new ProjectSetUp(packageName, projectName, db.desc(), mail.desc(), frontend.desc());
             getSummary();
-            Git git = githubService.cloneDefaultRepo(projectName);
-            isFolderCreated = true;
-            System.out.println(git.toString());
-
             getProjectSetupLoading();
-            SpringApplication.exit(applicationContext, () -> 0);
+
 
 
         } catch (Exception e) {
+            // ici on gere l'erreur en supprimant toute ce qui a etait crée depuis le depart sur le post local. !!! CETTE PARTIE POSE PROBLEME A CHAQUE FOIS ON RENTRE DANS CETTE EXECUTION MEME SI IL N'Y PAS EU D'ERREUR CONCRETE
             System.out.println("Error while creating new project. Please try again or contact us.");
             if (isFolderCreated && packageName != null) {
 
@@ -182,7 +201,7 @@ public class ApplicationCustomStartup {
         terminal.writer().flush();
     }
 
-    public DatabaseConfig dbConfig() throws InterruptedException {
+    public DatabaseConfig dbConfig() throws Exception {
         int choice = 0;
         boolean validInput = false;
 
@@ -205,30 +224,66 @@ public class ApplicationCustomStartup {
       }
 
         switch (choice) {
+
+          /*
+          * When user make a database choice we need to do 2 things :
+          *  - update database properties
+          *  - update pom.xml Database dependency
+          */
             case 1:
+                isPostgreSQL = true;
+                List<String> pathElements = new ArrayList<>();
+                pathElements.add("src");
+                pathElements.add("main");
+                pathElements.add("java");
+                pathElements.add("com");
+                Map<String, String> postgresProperties = new HashMap<>();
+                postgresProperties.put("spring.datasource.url", "jdbc:postgresql://localhost:5432/your_db");
                 DatabaseConfig psqlConfig = new DatabaseConfig(1, "PostgreSQL");
+                filesEditorService.updateApplicationProperties(projectName,  postgresProperties);
                 System.out.println("Updating files to set-up postgreSQL configuration");
                 Thread.sleep(3000);
                 return psqlConfig;
             case 2:
+                isMySql = true;
+                Map<String , String> mysqlProperties = new HashMap<>();
+                mysqlProperties.put("spring.datasource.url", "jdbc:mysql://localhost:3306/your_db");
                 DatabaseConfig msqlConfig = new DatabaseConfig(1, "MySql");
+                filesEditorService.updateApplicationProperties(projectName, mysqlProperties);
+                filesEditorService.updateDatabaseDependencyInXml(projectName, "mysql", "mysql-connnector-java");
                 System.out.println("Updating files to set-up MySql configuration");
                 Thread.sleep(3000);
                 return msqlConfig;
             case 3:
+                isMariaDb = true;
+                Map<String, String> mariaProperties = new HashMap<>();
+                mariaProperties.put("spring.datasource.url", "jdbc:mariadb://localhost:3306/your_db");
                 DatabaseConfig mariaConfig = new DatabaseConfig(1, "MariaDB");
+                filesEditorService.updateApplicationProperties(projectName, mariaProperties);
+                filesEditorService.updateDatabaseDependencyInXml(projectName, "org.mariadb.jdbc", "mariadb-java-client");
                 System.out.println("Updating files to set-up MariaDB configuration");
                 Thread.sleep(3000);
                 return mariaConfig;
+
             default:
+                isPostgreSQL = true;
+                Map<String, String> defaultProperties = new HashMap<>();
+                defaultProperties.put("spring.datasource.url", "jdbc:postgresql://localhost:5432/your_db");
                 DatabaseConfig defaultConfig = new DatabaseConfig(1, "PostgreSQL");
+                filesEditorService.updateApplicationProperties(projectName, defaultProperties);
                 System.out.println("Updating files to set-up postgreSQL configuration");
                 Thread.sleep(3000);
                 return defaultConfig;
         }
     }
 
-    public MailServiceConfig mailServiceConfig() throws InterruptedException {
+
+    /*
+     * When user make a mailService choice we need to do 2 things :
+     *  - update mailService properties
+     *  - update pom.xml mailService dependency
+     */
+    public MailServiceConfig mailServiceConfig() throws Exception {
         int choice = 0 ;
         boolean validInput = false;
 
@@ -255,24 +310,28 @@ public class ApplicationCustomStartup {
         switch (choice) {
             case 1:
                 MailServiceConfig mailGunConfig = new MailServiceConfig(1, "Mailgun");
+                filesEditorService.createMailServiceDependencyInXml(projectName, "com.mailgun", "mailgun-java", "1.0.0");
                 System.out.println("Updating files to set-up Mailgun configuration");
                 Thread.sleep(3000);
                 return mailGunConfig;
 
             case 2:
                 MailServiceConfig resendConfig = new MailServiceConfig(2, "Resend");
+                filesEditorService.createMailServiceDependencyInXml(projectName, "com.resend", "resend-java", "1.0.0");
                 System.out.println("Updating files to set-up Resend configuration");
                 Thread.sleep(3000);
                 return resendConfig;
 
             case 3:
                 MailServiceConfig sendGridConfig = new MailServiceConfig(3, "Sendgrid");
+                filesEditorService.createMailServiceDependencyInXml(projectName, "com.sendgrid", "sendgrid-java", "1.0.0");
                 System.out.println("Updating files to set-up Sendgrid configuration");
                 Thread.sleep(3000);
                 return sendGridConfig;
 
             default:
                 MailServiceConfig defaultConfig = new MailServiceConfig(1, "Mailgun");
+                filesEditorService.createMailServiceDependencyInXml(projectName, "com.mailgun", "mailgun-java", "1.0.0");
                 System.out.println(defaultConfig);
                 Thread.sleep(3000);
                 return defaultConfig;
@@ -281,6 +340,14 @@ public class ApplicationCustomStartup {
 
     }
 
+    /*
+     * When user make a frontend Framework choice we need to do 2 things :
+     *  - update framework properties (localhost port ..)
+     *  - if not reactJs choice => delete reactapp (springreact-frontend) else change nothing
+     *  - if angular choice => config a new angular app with multitenancy config
+     *  - if vueJs choice => config a new vueJs app with multitenancy confg
+     *
+     */
     public FrontendFrameworkConfig frontendFrameworkConfig() throws InterruptedException {
         int choice = 0;
         boolean validInput = false;

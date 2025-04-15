@@ -3,13 +3,13 @@ package com.nilsw13.starter_kit_cli.service;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
@@ -69,6 +69,8 @@ public class FilesEditorService {
                 Files.write(propsPath, newLines);
 
             }
+
+
             public void updateProjectNameArtifactAndDescriptionInXml(String projectName) throws Exception {
                 Path pomPath = Paths.get(projectName, "pom.xml");
 
@@ -94,13 +96,7 @@ public class FilesEditorService {
                     return;
                 }
 
-                /* now we proceed to update PostgresSQL dependency
-                   if user choose an other option.
-                    ==> Psql is default choice so it's already there. We need to update it or keep it
-                    => for the example we will try to change it for mysql without carrying about the user choice for now.
-                    // mysql-connector-java
-                */
-                updateDatabaseDependencyInXml(projectName, "mysql", "mysql-connector-java", document);
+
 
 
 
@@ -113,6 +109,79 @@ public class FilesEditorService {
             }
 
 
+    public void updateDatabaseDependencyInXml(String projectName,  String newgroup, String newArtifactId) throws Exception {
+        String oldGroupId = "org.postgresql";
+        String oldArtifactId = "postgresql";
+
+        Path pomPath = Paths.get(projectName, "pom.xml");
+
+
+        if (!Files.exists(pomPath)) {
+            System.out.println("error ! pom.xml not found at: " + pomPath);
+            return;
+        }
+
+        Document document = loadXmlDocument(pomPath);
+
+        NodeList dependencyTag =  document.getElementsByTagName("dependency");
+        for (int i =0; i < dependencyTag.getLength(); i++) {
+            Element childTag = (Element) dependencyTag.item(i);
+
+
+            NodeList groupeTag = childTag.getElementsByTagName("groupId");
+            NodeList artifactTag = childTag.getElementsByTagName("artifactId");
+
+            if (groupeTag.getLength() > 0 && artifactTag.getLength() > 0) {
+                String groupeIdValue =groupeTag.item(0).getTextContent();
+                String artifactIdValue = artifactTag.item(0).getTextContent();
+
+                if(groupeIdValue.startsWith("org.postgresql") && artifactIdValue.startsWith("postgresql")) {
+                    groupeTag.item(0).setTextContent(newgroup);
+                    artifactTag.item(0).setTextContent(newArtifactId);
+                }
+
+
+            }
+        }
+
+        saveXmlDocument(document, pomPath);
+
+
+    }
+
+
+
+    public void createMailServiceDependencyInXml(String projectName, String groupId, String artifactId, String version) throws Exception {
+            Path pomPath = Paths.get(projectName, "pom.xml");
+
+            if (!Files.exists(pomPath)){
+                System.out.println("Error pom.xml not found at : " + pomPath);
+                return;
+            }
+
+            Document document = loadXmlDocument(pomPath);
+
+            NodeList dependenciesNode = document.getElementsByTagName("dependencies");
+            if (dependenciesNode.getLength() == 0) {
+                System.out.println("Error dependencies tag not found");
+                return;
+            }
+
+
+           Node dependencyNode = dependenciesNode.item(0).appendChild(document.createElement("dependency"));
+
+            Node groupElement = dependencyNode.appendChild(document.createElement("groupId"));
+            Node artifactIdElement = dependencyNode.appendChild(document.createElement("artifactId"));
+            Node versionElement = dependencyNode.appendChild(document.createElement("version"));
+            
+            groupElement.setTextContent(groupId);
+            artifactIdElement.setTextContent(artifactId);
+            versionElement.setTextContent(version);
+            
+            saveXmlDocument(document, pomPath);
+
+
+    }
 
 
 
@@ -123,7 +192,11 @@ public class FilesEditorService {
 
 
 
-            public void updateProjectPackage(String projectName, String packageName) throws Exception {
+
+
+
+    // need to implement a way to update all old  package reference for the new one
+    public void updateProjectPackage(String projectName, String packageName) throws Exception {
 
             String oldPackage = "nilsw13";
             String oldProjectName = "springreact";
@@ -150,38 +223,13 @@ public class FilesEditorService {
     // private methods
 
 
-    private void updateDatabaseDependencyInXml(String projectName,  String newgroup, String newArtifactId, Document document) {
-                String oldGroupId = "org.postgresql";
-                String oldArtifactId = "postgresql";
-
-
-                NodeList dependencyTag =  document.getElementsByTagName("dependency");
-                for (int i =0; i < dependencyTag.getLength(); i++) {
-                    Element childTag = (Element) dependencyTag.item(i);
-
-
-                    NodeList groupeTag = childTag.getElementsByTagName("groupId");
-                    NodeList artifactTag = childTag.getElementsByTagName("artifactId");
-
-                    if (groupeTag.getLength() > 0 && artifactTag.getLength() > 0) {
-                        String groupeIdValue =groupeTag.item(0).getTextContent();
-                        String artifactIdValue = artifactTag.item(0).getTextContent();
-
-                        if(groupeIdValue.startsWith("org.postgresql") && artifactIdValue.startsWith("postgresql")) {
-                            groupeTag.item(0).setTextContent(newgroup);
-                            artifactTag.item(0).setTextContent(newArtifactId);
-                        }
-
-
-                    }
-                }
-
-    };
 
     private void updatePackageDirectoryStructure(String projectName, String oldPackage, String packageName) {
+                // change package name in folder structure
     }
 
     private void updateJavaPackageDeclarations(String projectName, String packageName, String oldPackage) {
+                // change package declaration in .java files
     }
 
     private void updateArtifactIdInPom(String projectName, Document document) {
