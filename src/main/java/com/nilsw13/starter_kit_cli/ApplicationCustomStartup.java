@@ -116,6 +116,7 @@ public class ApplicationCustomStartup {
         String packageName = lineReader.readLine(
                 PURPLE + BOLD + "Package name" + RESET + " (no spaces): " + CYAN
         );
+        
         terminal.writer().print(RESET);
         projectName = lineReader.readLine(
                 PURPLE + BOLD + "Project name" + RESET + " (no spaces): " + CYAN
@@ -136,7 +137,7 @@ public class ApplicationCustomStartup {
             Map<String , String> newNameProperties = new HashMap<>();
             newNameProperties.put("spring.application.name", projectName);
             filesEditorService.updateApplicationProperties(projectName, newNameProperties);
-            filesEditorService.updateProjectNameArtifactAndDescriptionInXml(projectName);
+            filesEditorService.setUpProjectRefs(projectName,  packageName);
 
 
         // maintenant on passe a la phase ou l'user doit faire des choix
