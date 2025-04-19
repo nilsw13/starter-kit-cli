@@ -40,7 +40,7 @@ public class FilesEditorService {
                         List<String> lines = Files.readAllLines(propsPath);
                         List<String> newLines = new ArrayList<>();
 
-                        //Set<String> processedKeys = new HashSet<>();
+
 
                         for (String line: lines) {
 
@@ -57,7 +57,7 @@ public class FilesEditorService {
 
                                 if (newProperties.containsKey(key)) {
                                     newLines.add(line.substring(0, line.indexOf('=') + 1) + newProperties.get(key));
-                                    //processedKeys.add(key);
+
                                 } else {
                                     newLines.add(line);
                                 }
@@ -234,7 +234,6 @@ public class FilesEditorService {
                             List<String> updatedLines = new ArrayList<>();
 
                             for (String line : lines) {
-                                // Remplace toute ancienne mention du package par le nouveau
                                 if (line.trim().startsWith("package ") && line.contains(oldPackage)) {
                                     updatedLines.add(line.replace(oldPackage, "com." +newPackage));
                                 } else if (line.trim().startsWith("import ") &&line.contains(oldPackage)) {
@@ -360,7 +359,6 @@ public class FilesEditorService {
         document.getDocumentElement().normalize();
         return document;
     }
-
 
 }
 

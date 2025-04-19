@@ -249,6 +249,7 @@ public class ApplicationCustomStartup {
                 isMySql = true;
                 Map<String , String> mysqlProperties = new HashMap<>();
                 mysqlProperties.put("spring.datasource.url", "jdbc:mysql://localhost:3306/your_db");
+                mysqlProperties.put("spring.jpa.properties.hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
                 DatabaseConfig msqlConfig = new DatabaseConfig(1, "MySql");
                 filesEditorService.updateApplicationProperties(projectName, mysqlProperties);
                 filesEditorService.updateDatabaseDependencyInXml(projectName, "mysql", "mysql-connnector-java");
@@ -259,6 +260,8 @@ public class ApplicationCustomStartup {
                 isMariaDb = true;
                 Map<String, String> mariaProperties = new HashMap<>();
                 mariaProperties.put("spring.datasource.url", "jdbc:mariadb://localhost:3306/your_db");
+                mariaProperties.put("spring.jpa.properties.hibernate.dialect", "org.hibernate.dialect.MariaDBDialect");
+
                 DatabaseConfig mariaConfig = new DatabaseConfig(1, "MariaDB");
                 filesEditorService.updateApplicationProperties(projectName, mariaProperties);
                 filesEditorService.updateDatabaseDependencyInXml(projectName, "org.mariadb.jdbc", "mariadb-java-client");
@@ -349,7 +352,7 @@ public class ApplicationCustomStartup {
      *  - if vueJs choice => config a new vueJs app with multitenancy confg
      *
      */
-    public FrontendFrameworkConfig frontendFrameworkConfig() throws InterruptedException {
+    public FrontendFrameworkConfig frontendFrameworkConfig() throws InterruptedException, IOException {
         int choice = 0;
         boolean validInput = false;
         while (!validInput) {
@@ -381,11 +384,21 @@ public class ApplicationCustomStartup {
                 return reactConfig;
             case 2:
                 FrontendFrameworkConfig vueJsConfig = new FrontendFrameworkConfig(2, "VueJs");
+                Map<String , String> vueProperties = new HashMap<>();
+                vueProperties.put("app.frontend.url", "http://localhost:8080");
+                vueProperties.put("spring.web.cors.allowed-origins", "http://localhost:8080,https://accounts.google.com");
+                vueProperties.put("app.oauth2.redirect-uri", "http://localhost:8080/oauth2/redirect");
+                filesEditorService.updateApplicationProperties(projectName, vueProperties);
                 System.out.println("Updating files to set-up VueJs configuration");
                 Thread.sleep(3000);
                 return vueJsConfig;
             case 3:
                 FrontendFrameworkConfig angularConfig = new FrontendFrameworkConfig(3, "Angular");
+                Map<String, String> angularProperties = new HashMap<>();
+                angularProperties.put("app.frontend.url", "http://localhost:4200");
+                angularProperties.put("spring.web.cors.allowed-origins", "http://localhost:4200,https://accounts.google.com");
+                angularProperties.put("app.oauth2.redirect-uri", "http://localhost:4200/oauth2/redirect");
+                filesEditorService.updateApplicationProperties(projectName, angularProperties);
                 System.out.println("Updating files to set-up Angular configuration");
                 Thread.sleep(3000);
                 return angularConfig;
